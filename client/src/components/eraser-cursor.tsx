@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 function EraserCursor() {
   const [positions, setPositions] = useState<[number, number]>([0, 0]);
-  const { tool, isOnBoard } = useDraw();
+  const { tool, isOnBoard, canvasRef } = useDraw();
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
@@ -16,6 +16,18 @@ function EraserCursor() {
 
     return () => window.removeEventListener("mousemove", handle);
   }, [tool]);
+
+  // hide cursor
+
+  useEffect(() => {
+    if (canvasRef.current && tool === "eraser") {
+      canvasRef.current.style.cursor = "none";
+    }
+
+    return () => {
+      if (canvasRef.current) canvasRef.current.style.cursor = "auto";
+    };
+  }, [canvasRef, tool]);
 
   if (tool !== "eraser" || !isOnBoard) return null;
   return (
