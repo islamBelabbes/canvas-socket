@@ -21,6 +21,12 @@ type THandleDraw = {
   drawingColor?: string;
 };
 
+type TEraser = {
+  e?: React.MouseEvent<HTMLCanvasElement, MouseEvent>;
+  eraserPoints?: TPoint;
+  onEraser?: (points: TPoint) => void;
+};
+
 type TDrawContext = {
   handleDraw: (param: THandleDraw) => void;
   handleMouseDown: () => void;
@@ -35,7 +41,7 @@ type TDrawContext = {
   color: string;
   setColor: (color: string) => void;
   clear: ({ onClear }: { onClear?: () => void }) => void;
-  handleEraser: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+  handleEraser: ({ e, eraserPoints }: TEraser) => void;
   isOnBoard: boolean;
   setIsOnBoard: (isOnBoard: boolean) => void;
   download: () => void;
@@ -91,7 +97,7 @@ export const DrawProvider = ({ children }: { children: React.ReactNode }) => {
       const lineColor = drawingColor || color;
       const lineWidth = 5;
 
-      let startPoint = previousPoint || prevPoint.current || points;
+      const startPoint = previousPoint || prevPoint.current || points;
       canvasContext.beginPath();
       canvasContext.lineWidth = lineWidth;
       canvasContext.strokeStyle = lineColor;
@@ -114,7 +120,7 @@ export const DrawProvider = ({ children }: { children: React.ReactNode }) => {
         color: lineColor,
       });
     },
-    [canvasContext, color, isDrawing, prevPoint, tool]
+    [canvasContext, color, isDrawing, prevPoint]
   );
 
   const handleMouseUp = () => {
@@ -124,22 +130,30 @@ export const DrawProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleMouseDown = () => setIsDrawing(true);
 
-  const handleEraser = (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
-    if (!canvasContext || !canvasRef.current || !isDrawing) return;
+  const handleEraser = useCallback(
+    ({ e, eraserPoints, onEraser }: TEraser) => {
+      if (!canvasContext || !canvasRef.current || (!isDrawing && !eraserPoints))
+        return;
+      const points = eraserPoints
+        ? eraserPoints
+        : e
+        ? getPointsBasedOnCanvas(e)
+        : null;
+      if (!points) return;
 
-    const points = getPointsBasedOnCanvas(e);
-    if (!points) return;
+      canvasContext.save(); // Save the current canvas state
+      canvasContext.globalCompositeOperation = "destination-out"; // Set eraser mode
 
-    canvasContext.save(); // Save the current canvas state
-    canvasContext.globalCompositeOperation = "destination-out"; // Set eraser mode
+      // Draw a circle for erasing
+      canvasContext.beginPath();
+      canvasContext.arc(points.x, points.y, 45, 0, Math.PI * 2); // 45 is half of 90
+      canvasContext.fill();
 
-    // Draw a circle for erasing
-    canvasContext.beginPath();
-    canvasContext.arc(points.x, points.y, 45, 0, Math.PI * 2); // 45 is half of 90
-    canvasContext.fill();
-
-    canvasContext.restore(); // Restore the canvas state to its original
-  };
+      canvasContext.restore(); // Restore the canvas state to its original
+      onEraser?.(points);
+    },
+    [canvasContext, isDrawing, canvasRef]
+  );
 
   // ACTIONS
   const clear = ({ onClear }: { onClear?: () => void } = {}) => {

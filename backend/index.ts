@@ -31,6 +31,10 @@ io.on("connection", (socket) => {
     }
   );
 
+  socket.on("eraser", ({ points }: { points: TPoint }) => {
+    socket.broadcast.emit("eraser", points);
+  });
+
   socket.on("joined", () => {
     socket.broadcast.emit("joined");
   });

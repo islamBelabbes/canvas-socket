@@ -17,7 +17,14 @@ export default function Board() {
   const handleOnMouseMove = (
     e: React.MouseEvent<HTMLCanvasElement, MouseEvent>
   ) => {
-    if (tool === "eraser") return handleEraser(e);
+    if (tool === "eraser") {
+      return handleEraser({
+        e,
+        onEraser: (points) => {
+          return socket.emit("eraser", { points });
+        },
+      });
+    }
 
     handleDraw({
       e,
@@ -40,6 +47,18 @@ export default function Board() {
       socket.off("draw");
     };
   }, [handleDraw]);
+
+  useEffect(() => {
+    socket.on("eraser", (points) => {
+      return handleEraser({
+        eraserPoints: points,
+      });
+    });
+
+    return () => {
+      socket.off("eraser");
+    };
+  }, [handleEraser]);
 
   useEffect(() => {
     socket.emit("joined");
